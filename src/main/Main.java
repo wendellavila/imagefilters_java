@@ -9,13 +9,15 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Scanner;
+import java.lang.Math;
 
 public class Main {
     
     static int m, n, grays;
     static String filename;
+    static int [][] mat;
     
-    static void generateOutputFile(int[][] mat) throws IOException {
+    static void generateOutputFile() throws IOException {
         
         //criar nome unico usando data e hora
         String outputPath = filename.replace(".pgm", "");
@@ -44,126 +46,298 @@ public class Main {
         System.out.println("Imagem \"" + outputPath + "\" criada com sucesso.");
     }
     
-    static int[] find8Neighborhood(int[][] mat, int i, int j){
+    static int[] find2x2Neighborhood(int i, int j){
+        //encontrar vizinhanca 2x2 do roberts, inclusive de pixels na borda
+        //retorna vetor 1x4 com o valor dos vizinhos, representando a matriz 2x2 de vizinhança
+        //valor -1 é atribuído se o pixel nao tem vizinho naquela posicao
         
-        //o pixel [i][j] sempre estará na ultima posicao do vetor
+        int maxLin = mat.length;
+        int maxCol = mat[0].length;
+        if(i >= maxLin-1 && j >= maxCol-1){ //pixel central está no canto inferior direito da imagem
+            int[] neighborhood = { mat[i][j], -1, -1, -1 };
+            return neighborhood;
+        }
+        else if(i < maxLin-1 && j >= maxCol-1){ //pixel central está na linha mais à direita da imagem, exceto canto inferior direito
+            int[] neighborhood = { mat[i][j], -1, mat[i+1][j], -1 };
+            return neighborhood;
+        }
+        else if(i >= maxLin-1 && j < maxCol-1){ //pixel central está na linha inferior da imagem, exceto canto inferior direito
+            int[] neighborhood = { mat[i][j], mat[i][j+1], -1, -1 };
+            return neighborhood;
+        }
+        else { //pixel central nao esta nas bordas da imagem
+            int[] neighborhood = { mat[i][j], mat[i][j+1], mat[i+1][j], mat[i+1][j+1] };
+            return neighborhood;
+        }
+    }
+    
+    static int[] find8Neighborhood(int i, int j){
+        //encontrar vizinhanca 8, inclusive de pixels na borda
+        //retorna vetor 1x9 com o valor dos vizinhos, representando a matriz 3x3 de vizinhança
+        //valor -1 é atribuído se o pixel nao tem vizinho naquela posicao
+        
         int maxLin = mat.length;
         int maxCol = mat[0].length;
     
-        if(i == 0 && j == 0){ //pixel está no canto superior esquerdo
-            int[] neighborhood = { mat[i+1][j], mat[i+1][j+1], mat[i][j+1], 0, 0, 0, 0, 0, mat[i][j] };
+        if(i == 0 && j == 0){ //pixel central está no canto superior esquerdo da imagem
+            
+            int[] neighborhood = { -1, -1, -1, -1, mat[i][j], mat[i][j+1], -1, mat[i+1][j], mat[i+1][j+1] };
             return neighborhood;
         }
-        else if(i == 0 && j >= maxCol-1){ //pixel está no canto superior direito
-            int[] neighborhood = { mat[i+1][j], mat[i+1][j-1], mat[i][j-1], 0, 0, 0, 0, 0, mat[i][j] };
+        else if(i == 0 && j >= maxCol-1){ //pixel central está no canto superior direito da imagem
+            int[] neighborhood = { -1, -1, -1, mat[i][j-1], mat[i][j], -1, mat[i+1][j-1], mat[i+1][j], -1 };
             return neighborhood;
         }
-        else if(i >= maxLin-1 && j == 0){ //pixel está no canto inferior esquerdo
-            int[] neighborhood = { mat[i][j+1], mat[i-1][j], mat[i-1][j+1], 0, 0, 0, 0, 0, mat[i][j] };
+        else if(i >= maxLin-1 && j == 0){ //pixel central está no canto inferior esquerdo da imagem
+            int[] neighborhood = { -1, mat[i-1][j], mat[i-1][j+1], -1, mat[i][j], mat[i][j+1], -1, -1, -1 };
             return neighborhood;
         }
-        else if(i >= maxLin-1 && j >= maxCol-1){ //pixel está no canto inferior direito
-            int[] neighborhood = { mat[i][j-1], mat[i-1][j-1], mat[i-1][j], 0, 0, 0, 0, 0, mat[i][j] };
+        else if(i >= maxLin-1 && j >= maxCol-1){ //pixel central está no canto inferior direito da imagem
+            int[] neighborhood = { mat[i-1][j-1], mat[i-1][j], -1, mat[i][j-1], mat[i][j], -1, -1, -1, -1 };
             return neighborhood;
         }
-        else if(i == 0 && j > 0 &&  j < maxCol-1){ //pixel está na linha superior exceto cantos
-            int[] neighborhood = { mat[i+1][j], mat[i+1][j+1], mat[i][j+1], mat[i+1][j-1], mat[i][j-1], 0, 0, 0, mat[i][j] };
+        else if(i == 0 && j > 0 &&  j < maxCol-1){ //pixel central está na linha superior da imagem, exceto cantos
+            int[] neighborhood = { -1, -1, -1, mat[i][j-1], mat[i][j], mat[i][j+1], mat[i+1][j-1], mat[i+1][j], mat[i+1][j+1] };
             return neighborhood;
         }
-        else if(i >= maxLin-1 && j > 0 && j < maxCol-1){ //pixel está na linha inferior exceto cantos
-            int[] neighborhood = { mat[i][j+1], mat[i-1][j], mat[i-1][j+1], mat[i][j-1], mat[i-1][j-1], 0, 0, 0, mat[i][j] };
+        else if(i >= maxLin-1 && j > 0 && j < maxCol-1){ //pixel central está na linha inferior da imagem, exceto cantos
+            int[] neighborhood = { mat[i-1][j-1], mat[i-1][j], mat[i-1][j+1], mat[i][j-1], mat[i][j], mat[i][j+1], -1, -1, -1 };
             return neighborhood;
         }
-        else if(i > 0 && i < maxLin-1 && j == 0){ //pixel está na linha mais à esquerda exceto cantos
-            int[] neighborhood = { mat[i+1][j], mat[i+1][j+1], mat[i][j+1], mat[i-1][j], mat[i-1][j+1], 0, 0, 0, mat[i][j] };
+        else if(i > 0 && i < maxLin-1 && j == 0){ //pixel central está na linha mais à esquerda da imagem, exceto cantos
+            int[] neighborhood = { -1, mat[i-1][j], mat[i-1][j+1], -1, mat[i][j], mat[i][j+1], -1, mat[i+1][j], mat[i+1][j+1] };
             return neighborhood;
         }
-        else if(i > 0 && i < maxLin-1 && j >= maxCol-1){ //pixel está na linha mais à direita exceto cantos
-            int[] neighborhood = { mat[i+1][j], mat[i+1][j-1], mat[i][j-1], mat[i-1][j-1], mat[i-1][j], 0, 0, 0, mat[i][j] };
+        else if(i > 0 && i < maxLin-1 && j >= maxCol-1){ //pixel central está na linha mais à direita da imagem, exceto cantos
+            int[] neighborhood = { mat[i-1][j-1], mat[i-1][j], -1, mat[i][j-1], mat[i][j], -1, mat[i+1][j-1], mat[i+1][j], -1 };
             return neighborhood;
         }
-        else { //pixel esta no centro da imagem
-            int[] neighborhood = { mat[i][j+1], mat[i][j-1], mat[i+1][j], mat[i-1][j], mat[i-1][j-1], mat[i-1][j+1], mat[i+1][j-1], mat[i+1][j+1], mat[i][j] };
+        else { //pixel central nao esta nas bordas da imagem
+            int[] neighborhood = { mat[i-1][j-1], mat[i-1][j], mat[i-1][j+1], mat[i][j-1], mat[i][j], mat[i][j+1], mat[i+1][j-1], mat[i+1][j], mat[i+1][j+1] };
             return neighborhood;
         }
     }
     
-    static void passaBaixa(int[][] mat) throws IOException{
-//        for(int i = 0; i < mat.length; i++){
-//            for(int j = 0; j < mat[0].length; j++){
-//                int[] neighborhood = find8Neighborhood(mat, i, j);
-//                for(int k = 0; k < neighborhood.length; k++){
-//                    //passa baixa
-//                }
-//            }
-//        }
-        generateOutputFile(mat);
+    static void passaBaixa() throws IOException{
+        int [][] newMat = new int[m][n];
+        for(int i = 0; i < mat.length; i++){
+            for(int j = 0; j < mat[0].length; j++){
+                int[] neighborhood = find8Neighborhood(i, j);
+                int soma = 0;
+                for(int k = 0; k < neighborhood.length; k++){
+                    if(neighborhood[k] != -1){
+                        soma += neighborhood[k];
+                    }
+                }
+                int newPixel = soma / 9;
+                if(newPixel < 0){
+                    newMat[i][j] = 0;
+                }
+                else if(newPixel > 255){
+                    newMat[i][j] = 255;
+                }
+                else {
+                    newMat[i][j] = newPixel;
+                }
+            }
+        }
+        mat = newMat;
+        System.out.println("Filtro aplicado com sucesso.");
+        menu();
     }
-    static void passaAlta(int[][] mat) throws IOException{  
-//        for(int i = 0; i < mat.length; i++){
-//            for(int j = 0; j < mat[0].length; j++){
-//                int[] neighborhood = find8Neighborhood(mat, i, j);
-//                for(int k = 0; k < neighborhood.length; k++){
-//                    //passa alta
-//                }
-//            }
-//        }
-        generateOutputFile(mat);
+    static void passaAlta() throws IOException{
+        int [][] newMat = new int[m][n];
+        int [] passaAltaValues = { -1, -1, -1, -1, 8, -1, -1, -1, -1};
+        for(int i = 0; i < mat.length; i++){
+            for(int j = 0; j < mat[0].length; j++){
+                int[] neighborhood = find8Neighborhood(i, j);
+                int soma = 0;
+                for(int k = 0; k < neighborhood.length; k++){
+                    if(neighborhood[k] != -1){
+                        soma += neighborhood[k] * passaAltaValues[k];
+                    }
+                }
+                if(soma < 0){
+                    newMat[i][j] = 0;
+                }
+                else if(soma > 255){
+                    newMat[i][j] = 255;
+                }
+                else {
+                    newMat[i][j] = soma;
+                }
+            }
+        }
+        mat = newMat;
+        System.out.println("Filtro aplicado com sucesso.");
+        menu();
     }
 
-    static void sobel(int[][] mat) throws IOException{
-        generateOutputFile(mat);
+    static void sobel() throws IOException{
+        int [][] newMat = new int[m][n];
+        int [] gradienteXValues = { -1, -2, -1, 0, 0, 0, 1, 2, 1};
+        int [] gradienteYValues = { -1, 0, 1, -2, 0, 2, -1, 0, 1};
+        for(int i = 0; i < mat.length; i++){
+            for(int j = 0; j < mat[0].length; j++){
+                int[] neighborhood = find8Neighborhood(i, j);
+                int gradienteX = 0;
+                int gradienteY = 0;
+                for(int k = 0; k < neighborhood.length; k++){
+                    if(neighborhood[k] != -1){
+                        gradienteX += neighborhood[k] * gradienteXValues[k];
+                        gradienteY += neighborhood[k] * gradienteYValues[k];
+                    }
+                }
+                int gradiente = (int) Math.round(Math.sqrt(Math.pow(gradienteX, 2) + Math.pow(gradienteY, 2)));
+                if(gradiente < 0){
+                    newMat[i][j] = 0;
+                }
+                else if(gradiente > 255){
+                    newMat[i][j] = 255;
+                }
+                else {
+                    newMat[i][j] = gradiente;
+                }
+            }
+        }
+        mat = newMat;
+        System.out.println("Filtro aplicado com sucesso.");
+        menu();
     }
-    static void prewitt(int[][] mat) throws IOException{
-        generateOutputFile(mat);
+    static void prewitt() throws IOException{
+        int [][] newMat = new int[m][n];
+        int [] gradienteXValues = { -1, -1, -1, 0, 0, 0, 1, 1, 1};
+        int [] gradienteYValues = { -1, 0, 1, -1, 0, 1, -1, 0, 1};
+        for(int i = 0; i < mat.length; i++){
+            for(int j = 0; j < mat[0].length; j++){
+                int[] neighborhood = find8Neighborhood(i, j);
+                int gradienteX = 0;
+                int gradienteY = 0;
+                for(int k = 0; k < neighborhood.length; k++){
+                    if(neighborhood[k] != -1){
+                        gradienteX += neighborhood[k] * gradienteXValues[k];
+                        gradienteY += neighborhood[k] * gradienteYValues[k];
+                    }
+                }
+                int gradiente = (int) Math.round(Math.sqrt(Math.pow(gradienteX, 2) + Math.pow(gradienteY, 2)));
+                if(gradiente < 0){
+                    newMat[i][j] = 0;
+                }
+                else if(gradiente > 255){
+                    newMat[i][j] = 255;
+                }
+                else {
+                    newMat[i][j] = gradiente;
+                }
+            }
+        }
+        mat = newMat;
+        System.out.println("Filtro aplicado com sucesso.");
+        menu();
     }
-    static void roberts(int[][] mat) throws IOException{
-        generateOutputFile(mat);
+    static void roberts() throws IOException{
+        int [][] newMat = new int[m][n];
+        int [] gradienteXValues = { -1, 0, 0, 1};
+        int [] gradienteYValues = { 0, -1, 1, 0};
+        for(int i = 0; i < mat.length; i++){
+            for(int j = 0; j < mat[0].length; j++){
+                int[] neighborhood = find2x2Neighborhood(i, j);
+                int gradienteX = 0;
+                int gradienteY = 0;
+                for(int k = 0; k < neighborhood.length; k++){
+                    if(neighborhood[k] != -1){
+                        gradienteX += neighborhood[k] * gradienteXValues[k];
+                        gradienteY += neighborhood[k] * gradienteYValues[k];
+                    }
+                }
+                int gradiente = (int) Math.round(Math.sqrt(Math.pow(gradienteX, 2) + Math.pow(gradienteY, 2)));
+                if(gradiente < 0){
+                    newMat[i][j] = 0;
+                }
+                else if(gradiente > 255){
+                    newMat[i][j] = 255;
+                }
+                else {
+                    newMat[i][j] = gradiente;
+                }
+            }
+        }
+        mat = newMat;
+        System.out.println("Filtro aplicado com sucesso.");
+        menu();
     }
-    static void isotropico(int[][] mat) throws IOException{
-        generateOutputFile(mat);
+    static void isotropico() throws IOException{
+        int [][] newMat = new int[m][n];
+        double [] gradienteXValues = { -1.0, 0.0, 1.0, -1*Math.sqrt(2), 0, Math.sqrt(2), -1.0, 0.0, 1.0};
+        double [] gradienteYValues = { -1.0, -1*Math.sqrt(2), -1.0, 0, 0, 0, 1.0, Math.sqrt(2), 1.0};
+        for(int i = 0; i < mat.length; i++){
+            for(int j = 0; j < mat[0].length; j++){
+                int[] neighborhood = find8Neighborhood(i, j);
+                double gradienteX = 0.0;
+                double gradienteY = 0.0;
+                for(int k = 0; k < neighborhood.length; k++){
+                    if(neighborhood[k] != -1){
+                        gradienteX += neighborhood[k] * gradienteXValues[k];
+                        gradienteY += neighborhood[k] * gradienteYValues[k];
+                    }
+                }
+                int gradiente = (int) Math.round(Math.sqrt(Math.pow(gradienteX, 2) + Math.pow(gradienteY, 2)));
+                if(gradiente < 0){
+                    newMat[i][j] = 0;
+                }
+                else if(gradiente > 255){
+                    newMat[i][j] = 255;
+                }
+                else {
+                    newMat[i][j] = gradiente;
+                }
+            }
+        }
+        mat = newMat;
+        System.out.println("Filtro aplicado com sucesso.");
+        menu();
     }
     
-    static void menu(int [][] originalMatrix) throws IOException{
+    static void menu() throws IOException {
 	
         int option = 0;
-        
-        System.out.println("====================== Menu de Opcoes ======================\n");
-        System.out.println("\t1 - Passa Baixa\n");
-        System.out.println("\t2 - Passa Alta\n");
-        System.out.println("\t3 - Sobel\n");
-        System.out.println("\t4 - Prewitt\n");
-        System.out.println("\t5 - Roberts\n");
-        System.out.println("\t6 - Isotropico\n");
-        System.out.println("\t7 - Sair\n");
-        System.out.println("======== Entre com o numero de uma das opcoes acima ========\n");
-        
         Scanner in = new Scanner(System.in);
-        option = in.nextInt();
+        
+        System.out.println("====================== Menu de Opcoes ======================");
+        System.out.println("\t1 - Passa Baixa");
+        System.out.println("\t2 - Passa Alta");
+        System.out.println("\t3 - Sobel");
+        System.out.println("\t4 - Prewitt");
+        System.out.println("\t5 - Roberts");
+        System.out.println("\t6 - Isotropico");
+        System.out.println("\t7 - Gerar imagem editada e sair");
+        System.out.println("======== Entre com o numero de uma das opcoes acima ========");
+        
         while(option < 1 || option > 7){
+            option = in.nextInt();
             switch(option){
                 case 1:
-                    passaBaixa(originalMatrix);
+                    passaBaixa();
                     break;
                 case 2:
-                    passaAlta(originalMatrix);
+                    passaAlta();
                     break;
                 case 3:
-                    sobel(originalMatrix);
+                    sobel();
                     break;
                 case 4:
-                    prewitt(originalMatrix);
+                    prewitt();
                     break;
                 case 5:
-                    roberts(originalMatrix);
+                    roberts();
                 break;
                 case 6:
-                    isotropico(originalMatrix);
+                    isotropico();
                 break;
                 case 7:
+                    generateOutputFile();
                 break;
                 default:
-                    System.out.println("\n\tEntrada invalida. Tente novamente.\n\n");
                 break;
             } //switch
         } //while
@@ -178,7 +352,7 @@ public class Main {
             path = Paths.get(filename);
         }
         else {
-            filename = "mona_lisa.ascii.pgm";
+            filename = "lena_ascii.pgm";
             path = Paths.get(filename);
         }
         
@@ -189,16 +363,15 @@ public class Main {
         n = scan.nextInt();
         grays = scan.nextInt();
         
-        int [][] inputMatrix = new int[m][n];
+        mat = new int[m][n];
         
         for(int i = 0; i < m; i++){
             for(int j = 0; j < n; j++){
                 if(scan.hasNextInt()){
-                    inputMatrix[i][j] = scan.nextInt();
+                    mat[i][j] = scan.nextInt();
                 }
             }
         }
-        generateOutputFile(inputMatrix);
-        //menu(inputMatrix);
+        menu();
     }
 }
